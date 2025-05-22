@@ -1,0 +1,25 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    pid: host
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - ./db/GeoLite2-City.mmdb:/app/GeoLite2-City.mmdb
+
+volumes:
+  caddy_data:
+  caddy_config:
