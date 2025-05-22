@@ -63,7 +63,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ip", handleRoot(db))
-	mux.HandleFunc("GET /ip/{ip}/", handleIP(db))
+	mux.HandleFunc("GET /ip/{ip}", handleIP(db))
 
 	log.Println("Server running at http://localhost:8888")
 	if err := http.ListenAndServe(":8888", mux); err != nil {
