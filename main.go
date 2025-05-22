@@ -79,6 +79,11 @@ func handleRoot(db *maxminddb.Reader) http.HandlerFunc {
 			return
 		}
 
+		if net.ParseIP(ip) == nil {
+			http.Error(w, `{"error":"Invalid IP"}`, http.StatusBadRequest)
+			return
+		}
+
 		response, err := lookupIP(db, ip)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
