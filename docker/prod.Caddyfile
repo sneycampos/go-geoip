@@ -1,10 +1,13 @@
-(tls_cf) {
-        tls {
-                dns cloudflare {env.CF_API_TOKEN}
-                resolvers 1.1.1.1
-        }
+{
+    acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+    #acme_ca https://acme.zerossl.com/v2/DV90
+    #email sneycampos@gmail.com
 }
 
 geoip.sney.eu {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+        resolvers 1.1.1.1
+    }
     reverse_proxy app:8888
 }
