@@ -17,7 +17,7 @@ localhost {
     }
 
     # Proxy only specific routes
-    handle /ip/* {
+    handle /ip* {
         reverse_proxy app:8888
     }
 }
