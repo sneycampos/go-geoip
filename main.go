@@ -62,8 +62,11 @@ func main() {
 	}(db)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ip", handleRoot(db))
-	mux.HandleFunc("GET /ip/{ip}", handleIP(db))
+	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("GET /ip", corsMiddleware(handleRoot(db)))
+	mux.HandleFunc("GET /ip/{ip}", corsMiddleware(handleIP(db)))
 
 	log.Println("Server running at http://localhost:8888")
 	if err := http.ListenAndServe(":8888", mux); err != nil {
@@ -168,5 +171,21 @@ func sendJSONResponse(w http.ResponseWriter, response GeoIPResponse) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding response: %v", err)
 		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+	}
+}
+
+func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next(w, r)
 	}
 }
