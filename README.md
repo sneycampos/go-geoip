@@ -39,7 +39,7 @@ curl https://geoip.sney.eu/ip/172.68.100.190
 
 ### 💻 JavaScript Example 
 ```javascript
-fetch('https://geoip.sney.eu/ip/172.68.100.190 ')
+fetch('https://geoip.sney.eu/ip/172.68.100.190')
   .then(response => response.json())
   .then(data => console.log(data));
 ```
