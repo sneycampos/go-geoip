@@ -16,7 +16,7 @@ A simple, fast, open-source and free IP geolocation lookup service powered by Ma
 
 ## 🔗 How to Use
 
-Just send a GET request to: https://geoip.sney.eu/ip/&lt;IP>
+Just send a GET request to: https://geoip.sney.eu/ip/{IP_ADDRESS}
 
 ### Example Request:
 ```bash
