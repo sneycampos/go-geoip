@@ -1,6 +1,7 @@
 localhost {
     root * /app/static
     encode gzip
+
     file_server {
         hide .git
     }

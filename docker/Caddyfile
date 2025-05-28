@@ -12,6 +12,7 @@ geoip.sney.eu {
 
     root * /app/static
     encode gzip
+
     file_server {
         hide .git
     }
@@ -24,10 +25,6 @@ geoip.sney.eu {
     }
 
     handle /favicon.ico {
-        respond 204
-    }
-
-    handle /ip/favicon.ico {
         respond 204
     }
 
