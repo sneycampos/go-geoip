@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>GeoIP API Service</title>
+    <link href="./output.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<div class="max-w-4xl mx-auto px-4 py-12">
+    <h1 class="text-4xl font-bold mb-6">🌍 GeoIP API Service</h1>
+    <p class="text-lg mb-6">
+        A simple, free, no-authentication IP geolocation lookup service. Just pass an IP address in the URL and get JSON back!
+    </p>
+    <p class="mb-6">
+        This service is powered by the GeoLite2 database from MaxMind, providing accurate geolocation data for IP addresses worldwide.
+    </p>
+    <p class="mb-4">
+        Get details like country, city, timezone, latitude, and longitude from any IP address. Perfect for geolocation detection, analytics, and customizing content based on visitor location.
+    </p>
+    <h2 class="text-2xl font-semibold mt-8 mb-4">📦 Features</h2>
+    <ul class="list-disc pl-6 mb-6">
+        <li>Free and open to use</li>
+        <li>No authentication required</li>
+        <li>Simple JSON response format</li>
+        <li>Supports IPv4 addresses</li>
+        <li>Fast and reliable</li>
+    </ul>
+
+    <h2 class="text-2xl font-semibold mt-8 mb-4">🔗 How to Use</h2>
+    <p class="mb-4">
+        Make a GET request to:
+    </p>
+    <code class="block bg-gray-100 p-4 rounded-md text-sm font-mono mb-6">
+        https://geoip.sney.eu/ip/&lt;IP>
+    </code>
+
+    <h3 class="text-xl font-medium mb-3">Example Response</h3>
+    <pre><code class="language-json">
+{
+  "ip": "172.68.100.190",
+  "country": "Portugal",
+  "country_code": "PT",
+  "city": "Lisbon",
+  "postal_code": "1000-005",
+  "latitude": 38.7219,
+  "longitude": -9.1398,
+  "timezone": "Europe/Lisbon"
+}
+    </code></pre>
+
+    <h3 class="text-xl font-medium mb-3">💻 Examples</h3>
+
+    <h4 class="font-medium mb-2">Using <code class="bg-gray-200 px-1 rounded">curl</code></h4>
+    <pre><code class="language-bash">
+curl https://geoip.sney.eu/ip/172.68.100.190
+    </code></pre>
+
+    <h4 class="font-medium mb-2">Using <code class="bg-gray-200 px-1 rounded">fetch</code> in JavaScript</h4>
+    <pre><code class="language-javascript">
+fetch('https://geoip.sney.eu/ip/172.68.100.190')
+  .then(response => response.json())
+  .then(data => console.log(data));
+    </code></pre>
+
+    <footer class="mt-12 text-sm text-gray-500 border-t pt-4">
+        © 2025 <a class="underline" href="https://github.com/sneycampos">Silvio Ney</a> — No authentication or rate limits.
+    </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+<script>hljs.highlightAll();</script>
+</body>
+</html>

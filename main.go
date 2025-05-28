@@ -62,9 +62,6 @@ func main() {
 	}(db)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
 	mux.HandleFunc("GET /ip", corsMiddleware(handleRoot(db)))
 	mux.HandleFunc("GET /ip/{ip}", corsMiddleware(handleIP(db)))
 
