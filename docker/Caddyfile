@@ -1,9 +1,3 @@
-{
-    #acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
-    #acme_ca https://acme.zerossl.com/v2/DV90
-    #email sneycampos@gmail.com
-}
-
 geoip.sney.eu {
     tls {
         dns cloudflare {env.CF_API_TOKEN}
@@ -28,8 +22,13 @@ geoip.sney.eu {
         respond 204
     }
 
-    # Proxy only specific routes
+    # Proxy all /ip* requests to the app service
     handle /ip/* {
+        log {
+            output file /var/log/caddy/api_access.log
+            format json
+        }
+
         reverse_proxy app:8888
     }
 }
