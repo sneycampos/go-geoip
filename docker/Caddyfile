@@ -22,13 +22,13 @@ geoip.sney.eu {
         respond 204
     }
 
+    log {
+        output file /var/log/caddy/api_access.log
+        format json
+    }
+
     # Proxy all /ip* requests to the app service
     handle /ip/* {
-        log {
-            output file /var/log/caddy/api_access.log
-            format json
-        }
-
         reverse_proxy app:8888
     }
 }
