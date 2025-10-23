@@ -1,0 +1,52 @@
+# 🌍 GeoIP API Service
+
+[![Go Version](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
+
+A **lightweight**, **fast**, and **free** IP geolocation lookup API service built with Go and powered by [MaxMind's GeoLite2 database](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data).
+
+## ✨ Features
+
+- 🚀 **High Performance** - Built with Go for optimal speed and low memory footprint
+- 💾 **In-Memory Caching** - 1-hour response caching for faster lookups but you can disable it if needed
+- 📍 **Detailed Geolocation** - Returns country, city, coordinates, postal code, and timezone
+
+## 🚀 Quick Start
+
+**Prerequisites:**
+- Docker and Docker Compose installed on your machine
+- Download the latest free version of the [GeoLite2 City database](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) from MaxMind. You will need to create a free account to access the download link.
+- Extract the downloaded file and place the `GeoLite2-City.mmdb` file in the project root.
+
+- **Start the service**
+```bash
+docker compose up -d
+```
+
+**Example Request:**
+```bash
+curl http://localhost:8888/172.68.100.190
+```
+
+**Example Response:**
+```json
+{
+  "ip": "8.8.8.8",
+  "country": "United States",
+  "country_code": "US",
+  "latitude": 37.751,
+  "longitude": -97.822,
+  "timezone": "America/Chicago"
+}
+```
+
+## 🏗️ Architecture
+
+- **Web Framework**: Go standard library (`net/http`)
+- **Database**: MaxMind GeoLite2-City (MMDB format)
+- **Database Reader**: [maxminddb-golang](https://github.com/oschwald/maxminddb-golang)
+- **Caching**: [go-cache](https://github.com/patrickmn/go-cache) with 1-hour TTL
+
+## 📝 License
+
+This project is licensed under the MIT License.

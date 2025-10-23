@@ -1,0 +1,149 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"net/netip"
+	"time"
+
+	"github.com/oschwald/maxminddb-golang/v2"
+	"github.com/patrickmn/go-cache"
+)
+
+type GeoIPResponse struct {
+	IP          string  `json:"ip"`
+	Country     string  `json:"country,omitempty"`
+	CountryCode string  `json:"country_code,omitempty"`
+	City        string  `json:"city,omitempty"`
+	PostalCode  string  `json:"postal_code,omitempty"`
+	Latitude    float64 `json:"latitude,omitempty"`
+	Longitude   float64 `json:"longitude,omitempty"`
+	Timezone    string  `json:"timezone,omitempty"`
+}
+
+type GeoIPRecord struct {
+	Country struct {
+		ISOCode string `maxminddb:"iso_code"`
+		Names   struct {
+			En string `maxminddb:"en"`
+		} `maxminddb:"names"`
+	} `maxminddb:"country"`
+	City struct {
+		Names struct {
+			En string `maxminddb:"en"`
+		} `maxminddb:"names"`
+	} `maxminddb:"city"`
+	Location struct {
+		Latitude  float64 `maxminddb:"latitude"`
+		Longitude float64 `maxminddb:"longitude"`
+		TimeZone  string  `maxminddb:"time_zone"`
+	} `maxminddb:"location"`
+	Postal struct {
+		Code string `maxminddb:"code"`
+	} `maxminddb:"postal"`
+}
+
+// initializes a cache with 1-hour expiration and 10-minute cleanup
+var c = cache.New(1*time.Hour, 10*time.Minute)
+
+func main() {
+	db, err := maxminddb.Open("GeoLite2-City.mmdb")
+	if err != nil {
+		log.Fatal("Error opening MMDB database:", err)
+	}
+
+	defer func(db *maxminddb.Reader) {
+		err := db.Close()
+		if err != nil {
+			log.Println("Error closing MMDB database:", err)
+		}
+	}(db)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{ip}", corsMiddleware(handleIP(db)))
+
+	log.Println("Server running at http://localhost:8888")
+
+	if err := http.ListenAndServe(":8888", mux); err != nil {
+		log.Fatal("Error starting server:", err)
+	}
+}
+
+func handleIP(db *maxminddb.Reader) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ip := r.PathValue("ip")
+
+		response, err := lookupIP(db, ip)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		sendJSONResponse(w, response)
+	}
+}
+
+// lookupIP queries the MMDB database for IP information
+func lookupIP(db *maxminddb.Reader, ipStr string) (GeoIPResponse, error) {
+	if cached, found := c.Get(ipStr); found {
+		return cached.(GeoIPResponse), nil
+	}
+
+	ip, err := netip.ParseAddr(ipStr)
+	if err != nil {
+		return GeoIPResponse{}, fmt.Errorf("invalid IP")
+	}
+
+	var record GeoIPRecord
+	err = db.Lookup(ip).Decode(&record)
+	if err != nil {
+		log.Printf("Error querying database: %v", err)
+		return GeoIPResponse{}, fmt.Errorf("internal server error")
+	}
+
+	if record.Country.ISOCode == "" {
+		return GeoIPResponse{}, fmt.Errorf("information not found for IP")
+	}
+
+	response := GeoIPResponse{
+		IP:          ipStr,
+		Country:     record.Country.Names.En,
+		CountryCode: record.Country.ISOCode,
+		City:        record.City.Names.En,
+		PostalCode:  record.Postal.Code,
+		Latitude:    record.Location.Latitude,
+		Longitude:   record.Location.Longitude,
+		Timezone:    record.Location.TimeZone,
+	}
+
+	c.Set(ipStr, response, cache.DefaultExpiration)
+	return response, nil
+}
+
+func sendJSONResponse(w http.ResponseWriter, response GeoIPResponse) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Add("status", "200")
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+	}
+}
+
+func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next(w, r)
+	}
+}
