@@ -31,12 +31,14 @@ curl http://localhost:8888/172.68.100.190
 **Example Response:**
 ```json
 {
-  "ip": "8.8.8.8",
-  "country": "United States",
-  "country_code": "US",
-  "latitude": 37.751,
-  "longitude": -97.822,
-  "timezone": "America/Chicago"
+  "ip": "172.68.100.190",
+  "country": "Portugal",
+  "country_code": "PT",
+  "city": "Lisbon",
+  "postal_code": "1000-005",
+  "latitude": 38.7219,
+  "longitude": -9.1398,
+  "timezone": "Europe/Lisbon"
 }
 ```
 
