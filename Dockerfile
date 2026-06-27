@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine AS build
+FROM golang:1.26.4-alpine AS build
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ WORKDIR /app
 
 COPY --from=build /app/my-app /my-app
 
-EXPOSE 80
+EXPOSE 8888
 
 USER nonroot
 
