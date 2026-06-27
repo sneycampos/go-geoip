@@ -8,8 +8,8 @@ A **lightweight**, **fast**, and **free** IP geolocation lookup API service buil
 ## ✨ Features
 
 - 🚀 **High Performance** - Built with Go for optimal speed and low memory footprint
-- 💾 **In-Memory Caching** - 1-hour response caching for faster lookups but you can disable it if needed
 - 📍 **Detailed Geolocation** - Returns country, city, coordinates, postal code, and timezone
+- 🛑 **Graceful Shutdown** - Finishes active requests before stopping
 
 ## 🚀 Quick Start
 
@@ -21,6 +21,11 @@ A **lightweight**, **fast**, and **free** IP geolocation lookup API service buil
 - **Start the service**
 ```bash
 docker compose up -d
+```
+
+**Health Check:**
+```bash
+curl -i http://localhost:8888/healthz
 ```
 
 **Example Request:**
@@ -47,7 +52,6 @@ curl http://localhost:8888/172.68.100.190
 - **Web Framework**: Go standard library (`net/http`)
 - **Database**: MaxMind GeoLite2-City (MMDB format)
 - **Database Reader**: [maxminddb-golang](https://github.com/oschwald/maxminddb-golang)
-- **Caching**: [go-cache](https://github.com/patrickmn/go-cache) with 1-hour TTL
 
 ## 📝 License
 

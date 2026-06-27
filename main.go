@@ -1,15 +1,23 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/netip"
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/oschwald/maxminddb-golang/v2"
-	"github.com/patrickmn/go-cache"
+)
+
+var (
+	errInvalidIP  = errors.New("invalid IP")
+	errIPNotFound = errors.New("information not found for IP")
 )
 
 type GeoIPResponse struct {
@@ -45,69 +53,137 @@ type GeoIPRecord struct {
 	} `maxminddb:"postal"`
 }
 
-// initializes a cache with 1-hour expiration and 10-minute cleanup
-var c = cache.New(1*time.Hour, 10*time.Minute)
+type errorResponse struct {
+	Error string `json:"error"`
+}
 
 func main() {
+	if err := run(); err != nil {
+		log.Printf("Server error: %v", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	db, err := maxminddb.Open("GeoLite2-City.mmdb")
 	if err != nil {
-		log.Fatal("Error opening MMDB database:", err)
+		return fmt.Errorf("opening MMDB database: %w", err)
 	}
 
-	defer func(db *maxminddb.Reader) {
-		err := db.Close()
-		if err != nil {
+	defer func() {
+		if err := db.Close(); err != nil {
 			log.Println("Error closing MMDB database:", err)
 		}
-	}(db)
+	}()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{ip}", corsMiddleware(handleIP(db)))
+	server := &http.Server{
+		Addr: ":8888",
+		Handler: newHandler(func(ip string) (GeoIPResponse, error) {
+			return lookupIP(db, ip)
+		}),
+	}
+
+	signalContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	serverErrors := make(chan error, 1)
+	go func() {
+		serverErrors <- server.ListenAndServe()
+	}()
 
 	log.Println("Server running at http://localhost:8888")
 
-	if err := http.ListenAndServe(":8888", mux); err != nil {
-		log.Fatal("Error starting server:", err)
+	select {
+	case err := <-serverErrors:
+		return fmt.Errorf("serving HTTP: %w", err)
+	case <-signalContext.Done():
+		log.Println("Shutting down server")
 	}
+
+	if err := server.Shutdown(context.Background()); err != nil {
+		return fmt.Errorf("shutting down HTTP server: %w", err)
+	}
+
+	if err := <-serverErrors; !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("serving HTTP: %w", err)
+	}
+
+	log.Println("Server stopped")
+
+	return nil
 }
 
-func handleIP(db *maxminddb.Reader) http.HandlerFunc {
+func newHandler(lookup func(string) (GeoIPResponse, error)) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("GET /{ip}", handleIP(lookup))
+	mux.HandleFunc("OPTIONS /{ip}", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	return corsMiddleware(mux)
+}
+
+func handleIP(lookup func(string) (GeoIPResponse, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ip := r.PathValue("ip")
 
-		response, err := lookupIP(db, ip)
+		response, err := lookup(ip)
 		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+			handleLookupError(w, ip, err)
 			return
 		}
 
-		sendJSONResponse(w, response)
+		sendJSONResponse(w, http.StatusOK, response)
 	}
 }
 
-// lookupIP queries the MMDB database for IP information
-func lookupIP(db *maxminddb.Reader, ipStr string) (GeoIPResponse, error) {
-	if cached, found := c.Get(ipStr); found {
-		return cached.(GeoIPResponse), nil
+func handleLookupError(w http.ResponseWriter, ip string, err error) {
+	status := http.StatusInternalServerError
+	message := "internal server error"
+
+	switch {
+	case errors.Is(err, errInvalidIP):
+		status = http.StatusBadRequest
+		message = errInvalidIP.Error()
+	case errors.Is(err, errIPNotFound):
+		status = http.StatusNotFound
+		message = errIPNotFound.Error()
+	default:
+		log.Printf("Error looking up IP %q: %v", ip, err)
 	}
 
+	sendJSONResponse(w, status, errorResponse{Error: message})
+}
+
+// lookupIP queries the MMDB database for IP information.
+func lookupIP(db *maxminddb.Reader, ipStr string) (GeoIPResponse, error) {
 	ip, err := netip.ParseAddr(ipStr)
 	if err != nil {
-		return GeoIPResponse{}, fmt.Errorf("invalid IP")
+		return GeoIPResponse{}, errInvalidIP
+	}
+
+	result := db.Lookup(ip)
+	if err := result.Err(); err != nil {
+		return GeoIPResponse{}, fmt.Errorf("looking up IP %q: %w", ipStr, err)
+	}
+
+	if !result.Found() {
+		return GeoIPResponse{}, errIPNotFound
 	}
 
 	var record GeoIPRecord
-	err = db.Lookup(ip).Decode(&record)
-	if err != nil {
-		log.Printf("Error querying database: %v", err)
-		return GeoIPResponse{}, fmt.Errorf("internal server error")
+	if err := result.Decode(&record); err != nil {
+		return GeoIPResponse{}, fmt.Errorf("decoding result for IP %q: %w", ipStr, err)
 	}
 
 	if record.Country.ISOCode == "" {
-		return GeoIPResponse{}, fmt.Errorf("information not found for IP")
+		return GeoIPResponse{}, errIPNotFound
 	}
 
-	response := GeoIPResponse{
+	return GeoIPResponse{
 		IP:          ipStr,
 		Country:     record.Country.Names.En,
 		CountryCode: record.Country.ISOCode,
@@ -116,34 +192,23 @@ func lookupIP(db *maxminddb.Reader, ipStr string) (GeoIPResponse, error) {
 		Latitude:    record.Location.Latitude,
 		Longitude:   record.Location.Longitude,
 		Timezone:    record.Location.TimeZone,
-	}
-
-	c.Set(ipStr, response, cache.DefaultExpiration)
-	return response, nil
+	}, nil
 }
 
-func sendJSONResponse(w http.ResponseWriter, response GeoIPResponse) {
+func sendJSONResponse(w http.ResponseWriter, status int, response any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Add("status", "200")
-
+	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding response: %v", err)
-		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
 	}
 }
 
-func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-		// Handle preflight OPTIONS requests
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next(w, r)
-	}
+		next.ServeHTTP(w, r)
+	})
 }
