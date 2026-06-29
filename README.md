@@ -5,13 +5,13 @@
 
 A **lightweight**, **fast**, and **free** IP geolocation lookup API service built with Go and powered by [MaxMind's GeoLite2 database](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data).
 
-## ✨ Features
+## Features
 
-- 🚀 **High Performance** - Built with Go for optimal speed and low memory footprint
-- 📍 **Detailed Geolocation** - Returns country, city, coordinates, postal code, and timezone
-- 🛑 **Graceful Shutdown** - Finishes active requests before stopping
+- **High Performance** - Built with Go for optimal speed and low memory footprint
+- **Detailed Geolocation** - Returns country, city, coordinates, postal code, and timezone
+- **Graceful Shutdown** - Finishes active requests before stopping
 
-## 🚀 Quick Start
+## Quick Start
 
 **Prerequisites:**
 - Docker and Docker Compose installed on your machine
@@ -47,12 +47,12 @@ curl http://localhost:8888/172.68.100.190
 }
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 - **Web Framework**: Go standard library (`net/http`)
 - **Database**: MaxMind GeoLite2-City (MMDB format)
 - **Database Reader**: [maxminddb-golang](https://github.com/oschwald/maxminddb-golang)
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License.
